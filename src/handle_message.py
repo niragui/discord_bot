@@ -29,6 +29,7 @@ from spotify_api_git.src.searcher.search_artist import SpotifySearchArtist
 from spotify_api_git.src.searcher.search_playlist import SpotifySearchPlaylist
 
 from script_handler.src.manual_handler import list_scripts, activate_script, deactivate_script, restart_script
+from script_handler.src.constants import NAME_FIELD, ACTIVE_FIELD
 
 TRACK_COMMAND = "track"
 ALBUM_COMMAND = "album"
@@ -361,16 +362,27 @@ class MessageHandler():
 
         scripts = list_scripts()
 
-        scripts_text = "# Active:"
+        activated = []
+        deactivated = []
 
         for script in scripts:
-            if script[1]:
-                scripts_text += f"{script[0]}\n"
+            text = f" - {script[NAME_FIELD]}"
+            if script[ACTIVE_FIELD]:
+                activated.append(text)
+            else:
+                deactivated.append(text)
+        
+        scripts_text = ""
+        if len(activated) > 0:
+            scripts_text += "# Active:\n\n"
+            scripts_text += "\n".join(activated)
 
-        for script in scripts:
-            if not script[1]:
-                scripts_text += f"{script[0]}\n"
-
+        if len(deactivated) > 0:
+            if len(activated) > 0:
+                scripts_text += "\n" * 3
+            scripts_text += "# Deactivated:\n\n"
+            scripts_text += "\n".join(deactivated)
+        
         await self.send_message(message, scripts_text)
 
     async def restart_saved_scripts(self,
@@ -535,7 +547,7 @@ class MessageHandler():
             return
 
         has_params = len(command_parts) > 1
-        should_have_params = command in LIST_SCRIPTS_COMMAND
+        should_have_params = command not in LIST_SCRIPTS_COMMAND
 
         if should_have_params and not has_params:
             print(f"Ignored Cause No Paramas [{msg_content}]")
