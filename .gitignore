@@ -169,3 +169,13 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+logs/
+error/
+queue/
+
+channels.json
+directions.json
+permits.json
+roles.json
+search_memes.json
