@@ -28,10 +28,20 @@ from spotify_api_git.src.searcher.search_album import SpotifySearchAlbum
 from spotify_api_git.src.searcher.search_artist import SpotifySearchArtist
 from spotify_api_git.src.searcher.search_playlist import SpotifySearchPlaylist
 
+from script_handler.src.manual_handler import list_scripts, activate_script, deactivate_script, restart_script
+
 TRACK_COMMAND = "track"
 ALBUM_COMMAND = "album"
 PLAYLIST_COMMAND = "playlist"
 ARTIST_COMMAND = "artist"
+
+LIST_SCRIPTS_COMMAND = "scripts"
+RESTART_SCRIPTS_COMMAND = "restart"
+ACTIVATE_SCRIPTS_COMMAND = "activate"
+DEACTIVATE_SCRIPTS_COMMAND = "deactivate"
+
+PARAMLESS_COMMANDS = [LIST_SCRIPTS_COMMAND]
+
 HELP_COMMAND = "help"
 
 
@@ -123,7 +133,7 @@ class MessageHandler():
         print(command)
         if memes_for_command is None:
             return search_term
-        
+
         new_term = memes_for_command.get(search_term, search_term)
 
         return new_term
@@ -147,7 +157,7 @@ class MessageHandler():
             add_word = word
             if len(add_word) > 0:
                 add_word = f" {word}"
-            
+
             aux += add_word
 
             if i + 1 == len(words):
@@ -336,6 +346,89 @@ class MessageHandler():
 
         await self.send_message(message, album_message)
 
+    async def list_saved_scripts(self,
+                                 message: Message):
+        """
+        Handles a list scripts request
+
+        Parameters:
+            - message: Message that requested the album
+        """
+        command, params = self.split_message(message)
+
+        if len(params) > 0:
+            raise ValueError(f"List Scripts Take No Parameters")
+
+        scripts = list_scripts()
+
+        scripts_text = "# Active:"
+
+        for script in scripts:
+            if script[1]:
+                scripts_text += f"{script[0]}\n"
+
+        for script in scripts:
+            if not script[1]:
+                scripts_text += f"{script[0]}\n"
+
+        await self.send_message(message, scripts_text)
+
+    async def restart_saved_scripts(self,
+                                    message: Message):
+        """
+        Handles a restart scripts request
+
+        Parameters:
+            - message: Message that requested the album
+        """
+        command, params = self.split_message(message)
+
+        if len(params) == 0:
+            raise ValueError(f"Restart Scripts Must Have Parameters")
+
+        script_name = " ".join(params)
+
+        restart_script(script_name)
+
+        await self.send_message(message, f"{script_name} Restarted")
+
+    async def activate_saved_scripts(self,
+                                     message: Message):
+        """
+        Handles a restart scripts request
+
+        Parameters:
+            - message: Message that requested the album
+        """
+        command, params = self.split_message(message)
+
+        if len(params) == 0:
+            raise ValueError(f"Activate Scripts Must Have Parameters")
+
+        script_name = " ".join(params)
+
+        activate_script(script_name)
+
+        await self.send_message(message, f"{script_name} Activated")
+
+    async def deactivate_saved_scripts(self,
+                                       message: Message):
+        """
+        Handles a restart scripts request
+
+        Parameters:
+            - message: Message that requested the album
+        """
+        command, params = self.split_message(message)
+
+        if len(params) == 0:
+            raise ValueError(f"Deactivate Scripts Must Have Parameters")
+
+        script_name = " ".join(params)
+
+        deactivate_script(script_name)
+
+        await self.send_message(message, f"{script_name} Deactivated")
 
     async def artist_function(self,
                               message: Message):
@@ -407,6 +500,14 @@ class MessageHandler():
             return self.playlist_function
         elif command == ARTIST_COMMAND:
             return self.artist_function
+        elif command == LIST_SCRIPTS_COMMAND:
+            return self.list_saved_scripts
+        elif command == RESTART_SCRIPTS_COMMAND:
+            return self.restart_saved_scripts
+        elif command == ACTIVATE_SCRIPTS_COMMAND:
+            return self.activate_saved_scripts
+        elif command == DEACTIVATE_SCRIPTS_COMMAND:
+            return self.deactivate_saved_scripts
 
         return None
 
@@ -428,12 +529,16 @@ class MessageHandler():
             return
 
         command_parts = msg_content.split(" ")
-        if len(command_parts) == 1:
-            print(f"Ignored Cause No Paramas [{msg_content}]")
+        command = command_parts[0].lower().replace(COMMAND_START, "")
+
+        if len(command) == 0:
             return
 
-        command = command_parts[0].lower().replace(COMMAND_START, "")
-        if len(command) == 0:
+        has_params = len(command_parts) > 1
+        should_have_params = command in LIST_SCRIPTS_COMMAND
+
+        if should_have_params and not has_params:
+            print(f"Ignored Cause No Paramas [{msg_content}]")
             return
 
         guild = message.guild
@@ -460,7 +565,7 @@ class MessageHandler():
 
         if command_handler is None:
             return
-        
+
         try:
             await command_handler(message)
         except:
